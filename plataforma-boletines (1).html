@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Colegio Cristiano Leche y Miel — Plataforma de Notas</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+  body { margin: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+/* ---------------------------------------------------------
+   CONFIGURACIÓN DE FIREBASE
+   Reemplaza estos valores por los de tu propio proyecto
+   (Firebase Console → Configuración del proyecto → Tus apps)
+--------------------------------------------------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyB1PHNtCB7I3AEwQi3Ohvd7A2fQIMV8mP4",
+  authDomain: "leche-y-miel-notas.firebaseapp.com",
+  projectId: "leche-y-miel-notas",
+  storageBucket: "leche-y-miel-notas.firebasestorage.app",
+  messagingSenderId: "165771917392",
+  appId: "1:165771917392:web:d9f46e127cdbc8ca14f955",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const { useState, useEffect, useMemo, useCallback, Fragment } = React;
+
+/* ---------------- Iconos (SVG propios, sin dependencias externas) ---------------- */
+function IconBase({ children, size = 16, className = "", color = "currentColor", style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+      {children}
+    </svg>
+  );
+}
+function LogOut(props) { return <IconBase {...props}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></IconBase>; }
+function Plus(props) { return <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></IconBase>; }
+function Trash2(props) { return <IconBase {...props}><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></IconBase>; }
+function Pencil(props) { return <IconBase {...props}><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" /></IconBase>; }
+function Save(props) { return <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></IconBase>; }
+function Printer(props) { return <IconBase {...props}><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></IconBase>; }
+function Users(props) { return <IconBase {...props}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></IconBase>; }
+function BookOpen(props) { return <IconBase {...props}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2Z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7Z" /></IconBase>; }
+function GraduationCap(props) { return <IconBase {...props}><path d="M22 10 12 5 2 10l10 5 10-5Z" /><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5" /></IconBase>; }
+function ClipboardList(props) { return <IconBase {...props}><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M9 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-3" /><path d="M9 12h6" /><path d="M9 16h6" /><path d="M9 8h1" /></IconBase>; }
+function X(props) { return <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></IconBase>; }
+function Loader2(props) { return <IconBase {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56" /></IconBase>; }
+
+/* ---------------------------------------------------------
+   COLEGIO CRISTIANO LECHE Y MIEL — Plataforma de Boletines
+   Paleta: azul institucional + dorado miel (tomados del logo)
+--------------------------------------------------------- */
+
+const BRAND = {
+  blue: "#1B3B6F",
+  blueDark: "#122A4E",
+  blueSoft: "#EAF0FA",
+  gold: "#F2B705",
+  goldDark: "#C98A00",
+  honey: "#FBEBC0",
+  bg: "#FAFAF8",
+  ink: "#1A1A1A",
+};
+
+const PERIODOS = ["I", "II", "III", "IV"];
+
+const FIRESTORE_COLLECTION = "plataforma";
+const SCHOOL_DOC = "school-data";
+const GRADES_DOC = "grades-data";
+
+/* ---------------- Datos semilla ---------------- */
+const seedAreas = [
+  { id: "a1", name: "Matemáticas" },
+  { id: "a2", name: "Español" },
+  { id: "a3", name: "Ciencias Sociales" },
+  { id: "a4", name: "Ciencias Naturales" },
+];
+
+const seedSubjects = [
+  { id: "s1", name: "Matemáticas", areaId: "a1" },
+  { id: "s2", name: "Geometría", areaId: "a1" },
+  { id: "s3", name: "Español", areaId: "a2" },
+  { id: "s4", name: "Comprensión lectora", areaId: "a2" },
+  { id: "s5", name: "Ortografía", areaId: "a2" },
+  { id: "s6", name: "Geografía", areaId: "a3" },
+  { id: "s7", name: "Historia", areaId: "a3" },
+  { id: "s8", name: "Competencia ciudadana", areaId: "a3" },
+  { id: "s9", name: "Biología", areaId: "a4" },
+  { id: "s10", name: "Inglés", areaId: "a4" },
+  { id: "s11", name: "Ética y Valores", areaId: "a4" },
+  { id: "s12", name: "Vida Cristiana", areaId: "a4" },
+  { id: "s13", name: "Educación Artística", areaId: "a4" },
+];
+
+const seedUsers = [
+  { id: "u1", name: "Administrador", username: "admin", password: "admin123", role: "admin", subjectIds: [] },
+  { id: "u2", name: "Coordinación", username: "coordinador", password: "coord123", role: "coordinador", subjectIds: [] },
+];
+
+const seedStudents = [];
+
+const uid = (p) => `${p}${Date.now()}${Math.floor(Math.random() * 10000)}`;
+
+/* ---------------- Utilidades académicas ---------------- */
+function nivelDesempeño(valor) {
+  if (valor === null || valor === undefined || isNaN(valor)) return "";
+  if (valor < 3) return "Bajo";
+  if (valor < 4) return "Básico";
+  if (valor < 4.6) return "Alto";
+  return "Superior";
+}
+
+function nivelColor(nivel) {
+  switch (nivel) {
+    case "Bajo": return "#B3261E";
+    case "Básico": return "#8A5A00";
+    case "Alto": return "#1B3B6F";
+    case "Superior": return "#0F7A3D";
+    default: return BRAND.ink;
+  }
+}
+
+function promedioPeriodos(valores) {
+  const nums = valores.filter((v) => v !== null && v !== undefined && v !== "" && !isNaN(v)).map(Number);
+  if (nums.length === 0) return null;
+  return nums.reduce((a, b) => a + b, 0) / nums.length;
+}
+
+/* ================================================================
+   LOGO — reconstrucción vectorial simple inspirada en el sello
+   (círculo azul/dorado, panal, nombre del colegio)
+================================================================ */
+function Logo({ size = 56 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-label="Logo Colegio Cristiano Leche y Miel">
+      <circle cx="50" cy="50" r="48" fill="white" stroke={BRAND.gold} strokeWidth="4" />
+      <circle cx="50" cy="50" r="40" fill="white" stroke={BRAND.blue} strokeWidth="3" />
+      {[[50,32],[36,40],[64,40],[36,56],[64,56],[50,64]].map(([cx,cy],i)=>(
+        <polygon key={i} points={hexPoints(cx,cy,10)} fill={BRAND.gold} stroke={BRAND.goldDark} strokeWidth="1"/>
+      ))}
+      <path d="M32 66 Q50 78 68 66 L68 70 Q50 82 32 70 Z" fill={BRAND.blue} opacity="0.85" />
+    </svg>
+  );
+}
+function hexPoints(cx, cy, r) {
+  const pts = [];
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+  }
+  return pts.join(" ");
+}
+
+/* ================================================================
+   APP
+================================================================ */
+function App() {
+  const [schoolData, setSchoolData] = useState(null);
+  const [gradesData, setGradesData] = useState(null);
+  const [session, setSession] = useState(null);
+  const [loadingSchool, setLoadingSchool] = useState(true);
+  const [loadingGrades, setLoadingGrades] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const loading = loadingSchool || loadingGrades;
+
+  useEffect(() => {
+    const seedSchool = { schoolName: "Colegio Cristiano Leche y Miel", areas: seedAreas, subjects: seedSubjects, users: seedUsers, students: seedStudents };
+    const seedGrades = { grades: {}, convivencia: {}, observaciones: {} };
+    const schoolRef = db.collection(FIRESTORE_COLLECTION).doc(SCHOOL_DOC);
+    const gradesRef = db.collection(FIRESTORE_COLLECTION).doc(GRADES_DOC);
+
+    const unsubSchool = schoolRef.onSnapshot(
+      (doc) => {
+        if (doc.exists) {
+          setSchoolData(doc.data());
+        } else {
+          setSchoolData(seedSchool);
+          schoolRef.set(seedSchool).catch(() => setError("No se pudo inicializar la base de datos. Revisa tu configuración de Firebase."));
+        }
+        setLoadingSchool(false);
+      },
+      () => { setSchoolData(seedSchool); setLoadingSchool(false); setError("No se pudo conectar con la base de datos. Revisa tu configuración de Firebase."); }
+    );
+
+    const unsubGrades = gradesRef.onSnapshot(
+      (doc) => {
+        if (doc.exists) {
+          setGradesData(doc.data());
+        } else {
+          setGradesData(seedGrades);
+          gradesRef.set(seedGrades).catch(() => setError("No se pudo inicializar la base de datos. Revisa tu configuración de Firebase."));
+        }
+        setLoadingGrades(false);
+      },
+      () => { setGradesData(seedGrades); setLoadingGrades(false); setError("No se pudo conectar con la base de datos. Revisa tu configuración de Firebase."); }
+    );
+
+    return () => { unsubSchool(); unsubGrades(); };
+  }, []);
+
+  const persistSchool = useCallback(async (next) => {
+    setSchoolData(next);
+    setSaving(true);
+    try {
+      await db.collection(FIRESTORE_COLLECTION).doc(SCHOOL_DOC).set(next);
+    } catch {
+      setError("No se pudo guardar el cambio. Verifica tu conexión.");
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  const persistGrades = useCallback(async (next) => {
+    setGradesData(next);
+    setSaving(true);
+    try {
+      await db.collection(FIRESTORE_COLLECTION).doc(GRADES_DOC).set(next);
+    } catch {
+      setError("No se pudo guardar el cambio. Verifica tu conexión.");
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  if (loading) {
+    return (
+      <div style={{ background: BRAND.bg }} className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin" color={BRAND.blue} size={32} />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginScreen users={schoolData.users} schoolName={schoolData.schoolName} onLogin={setSession} />;
+  }
+
+  return (
+    <div style={{ background: BRAND.bg, minHeight: "100vh" }} className="text-sm">
+      <TopBar session={session} onLogout={() => setSession(null)} schoolName={schoolData.schoolName} saving={saving} />
+      {error && (
+        <div className="max-w-5xl mx-auto mt-3 px-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-2 flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={() => setError("")}><X size={16} /></button>
+          </div>
+        </div>
+      )}
+      <main className="max-w-5xl mx-auto px-4 py-6">
+        {session.role === "admin" && (
+          <AdminArea schoolData={schoolData} persistSchool={persistSchool} gradesData={gradesData} persistGrades={persistGrades} />
+        )}
+        {session.role === "coordinador" && (
+          <CoordinadorArea schoolData={schoolData} gradesData={gradesData} persistGrades={persistGrades} />
+        )}
+        {session.role === "profesor" && (
+          <ProfesorArea session={session} schoolData={schoolData} gradesData={gradesData} persistGrades={persistGrades} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+/* ================================================================
+   LOGIN
+================================================================ */
+function LoginScreen({ users, schoolName, onLogin }) {
+  const [userId, setUserId] = useState(users[0]?.id || "");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+
+  function handleSubmit() {
+    const u = users.find((x) => x.id === userId);
+    if (!u) return setErr("Selecciona un usuario.");
+    if (u.password !== password) return setErr("Contraseña incorrecta.");
+    setErr("");
+    onLogin(u);
+  }
+
+  return (
+    <div style={{ background: `linear-gradient(160deg, ${BRAND.blueDark}, ${BRAND.blue})` }} className="min-h-screen flex items-center justify-center px-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8">
+        <div className="flex flex-col items-center mb-6">
+          <Logo size={64} />
+          <h1 style={{ color: BRAND.blue }} className="text-lg font-bold text-center mt-3 leading-tight">
+            {schoolName}
+          </h1>
+          <p style={{ color: BRAND.goldDark }} className="text-xs font-semibold tracking-wide uppercase mt-1">
+            Plataforma de Notas
+          </p>
+        </div>
+
+        <label className="block text-xs font-semibold text-gray-600 mb-1">Usuario</label>
+        <select
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2"
+        >
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>{u.name} — {roleLabel(u.role)}</option>
+          ))}
+        </select>
+
+        <label className="block text-xs font-semibold text-gray-600 mb-1">Contraseña</label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2"
+          placeholder="••••••••"
+        />
+        {err && <p className="text-red-600 text-xs mb-2">{err}</p>}
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          style={{ background: BRAND.gold, color: BRAND.blueDark }}
+          className="w-full font-bold rounded-lg py-2.5 mt-2 hover:brightness-95 transition"
+        >
+          Ingresar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function roleLabel(role) {
+  return role === "admin" ? "Administrador" : role === "coordinador" ? "Coordinación" : "Profesor";
+}
+
+/* ================================================================
+   TOP BAR
+================================================================ */
+function TopBar({ session, onLogout, schoolName, saving }) {
+  return (
+    <header style={{ background: BRAND.blue }} className="text-white">
+      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Logo size={38} />
+          <div>
+            <div className="font-bold leading-tight">{schoolName}</div>
+            <div style={{ color: BRAND.gold }} className="text-xs font-semibold">Plataforma de Notas</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {saving && <span className="text-xs opacity-80 flex items-center gap-1"><Loader2 size={12} className="animate-spin"/>Guardando…</span>}
+          <div className="text-right hidden sm:block">
+            <div className="font-semibold">{session.name}</div>
+            <div className="text-xs opacity-80">{roleLabel(session.role)}</div>
+          </div>
+          <button onClick={onLogout} title="Salir" className="p-2 rounded-lg hover:bg-white/10 transition">
+            <LogOut size={18} />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/* ================================================================
+   TABS helper
+================================================================ */
+function Tabs({ tabs, active, onChange }) {
+  return (
+    <div className="flex gap-1 mb-5 border-b border-gray-200 overflow-x-auto">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          className="px-4 py-2.5 text-sm font-semibold flex items-center gap-1.5 border-b-2 whitespace-nowrap transition"
+          style={{
+            borderColor: active === t.key ? BRAND.gold : "transparent",
+            color: active === t.key ? BRAND.blue : "#6b7280",
+          }}
+        >
+          {t.icon}{t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ================================================================
+   ADMIN AREA
+================================================================ */
+function AdminArea({ schoolData, persistSchool, gradesData, persistGrades }) {
+  const [tab, setTab] = useState("areas");
+
+  const tabs = [
+    { key: "areas", label: "Áreas y Asignaturas", icon: <BookOpen size={16} /> },
+    { key: "profesores", label: "Profesores", icon: <Users size={16} /> },
+    { key: "estudiantes", label: "Estudiantes", icon: <GraduationCap size={16} /> },
+    { key: "boletines", label: "Boletines", icon: <ClipboardList size={16} /> },
+  ];
+
+  return (
+    <div>
+      <Tabs tabs={tabs} active={tab} onChange={setTab} />
+      {tab === "areas" && <AreasAsignaturas schoolData={schoolData} persistSchool={persistSchool} />}
+      {tab === "profesores" && <Profesores schoolData={schoolData} persistSchool={persistSchool} />}
+      {tab === "estudiantes" && <Estudiantes schoolData={schoolData} persistSchool={persistSchool} />}
+      {tab === "boletines" && <BoletinesViewer schoolData={schoolData} gradesData={gradesData} editableObservaciones onSaveObservaciones={async (studentId, texto) => {
+        const next = { ...gradesData, observaciones: { ...gradesData.observaciones, [studentId]: texto } };
+        await persistGrades(next);
+      }} />}
+    </div>
+  );
+}
+
+/* --------- Áreas y Asignaturas --------- */
+function AreasAsignaturas({ schoolData, persistSchool }) {
+  const [newArea, setNewArea] = useState("");
+  const [newSubject, setNewSubject] = useState({ name: "", areaId: schoolData.areas[0]?.id || "" });
+
+  function addArea() {
+    if (!newArea.trim()) return;
+    const area = { id: uid("a"), name: newArea.trim() };
+    persistSchool({ ...schoolData, areas: [...schoolData.areas, area] });
+    setNewArea("");
+  }
+  function deleteArea(id) {
+    const subjectsInArea = schoolData.subjects.filter((s) => s.areaId === id);
+    if (subjectsInArea.length > 0) {
+      alert("Primero elimina o reasigna las asignaturas de esta área.");
+      return;
+    }
+    persistSchool({ ...schoolData, areas: schoolData.areas.filter((a) => a.id !== id) });
+  }
+  function addSubject() {
+    if (!newSubject.name.trim() || !newSubject.areaId) return;
+    const subj = { id: uid("s"), name: newSubject.name.trim(), areaId: newSubject.areaId };
+    persistSchool({ ...schoolData, subjects: [...schoolData.subjects, subj] });
+    setNewSubject({ name: "", areaId: newSubject.areaId });
+  }
+  function deleteSubject(id) {
+    persistSchool({ ...schoolData, subjects: schoolData.subjects.filter((s) => s.id !== id) });
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <Card title="Áreas">
+        <div className="flex gap-2 mb-4">
+          <input value={newArea} onChange={(e) => setNewArea(e.target.value)} placeholder="Nueva área (ej. Matemáticas)" className="flex-1 border rounded-lg px-3 py-1.5 text-sm" />
+          <BtnGold onClick={addArea}><Plus size={16} /></BtnGold>
+        </div>
+        <ul className="space-y-1.5">
+          {schoolData.areas.map((a) => (
+            <li key={a.id} className="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-2">
+              <span className="font-medium">{a.name}</span>
+              <button onClick={() => deleteArea(a.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card title="Asignaturas">
+        <div className="flex gap-2 mb-4">
+          <select value={newSubject.areaId} onChange={(e) => setNewSubject({ ...newSubject, areaId: e.target.value })} className="border rounded-lg px-2 py-1.5 text-sm">
+            {schoolData.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <input value={newSubject.name} onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })} placeholder="Nueva asignatura" className="flex-1 border rounded-lg px-3 py-1.5 text-sm" />
+          <BtnGold onClick={addSubject}><Plus size={16} /></BtnGold>
+        </div>
+        <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+          {schoolData.areas.map((area) => (
+            <div key={area.id}>
+              <div style={{ color: BRAND.goldDark }} className="text-xs font-bold uppercase mb-1">{area.name}</div>
+              <ul className="space-y-1">
+                {schoolData.subjects.filter((s) => s.areaId === area.id).map((s) => (
+                  <li key={s.id} className="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-1.5">
+                    <span>{s.name}</span>
+                    <button onClick={() => deleteSubject(s.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={14} /></button>
+                  </li>
+                ))}
+                {schoolData.subjects.filter((s) => s.areaId === area.id).length === 0 && (
+                  <li className="text-xs text-gray-400 px-3">Sin asignaturas aún</li>
+                )}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* --------- Profesores --------- */
+function Profesores({ schoolData, persistSchool }) {
+  const [form, setForm] = useState(emptyTeacher());
+  const [editingId, setEditingId] = useState(null);
+
+  function emptyTeacher() {
+    return { name: "", username: "", password: "", role: "profesor", subjectIds: [] };
+  }
+
+  function save() {
+    if (!form.name.trim() || !form.username.trim() || !form.password.trim()) {
+      alert("Completa nombre, usuario y contraseña.");
+      return;
+    }
+    if (editingId) {
+      persistSchool({ ...schoolData, users: schoolData.users.map((u) => (u.id === editingId ? { ...form, id: editingId } : u)) });
+    } else {
+      persistSchool({ ...schoolData, users: [...schoolData.users, { ...form, id: uid("u") }] });
+    }
+    setForm(emptyTeacher());
+    setEditingId(null);
+  }
+
+  function edit(u) {
+    setForm({ name: u.name, username: u.username, password: u.password, role: u.role, subjectIds: u.subjectIds || [] });
+    setEditingId(u.id);
+  }
+
+  function remove(id) {
+    if (!confirm("¿Eliminar este usuario?")) return;
+    persistSchool({ ...schoolData, users: schoolData.users.filter((u) => u.id !== id) });
+  }
+
+  function toggleSubject(sid) {
+    setForm((f) => ({
+      ...f,
+      subjectIds: f.subjectIds.includes(sid) ? f.subjectIds.filter((x) => x !== sid) : [...f.subjectIds, sid],
+    }));
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <Card title={editingId ? "Editar usuario" : "Nuevo profesor / usuario"}>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre completo</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border rounded-lg px-3 py-1.5 text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Usuario</label>
+              <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="w-full border rounded-lg px-3 py-1.5 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Contraseña</label>
+              <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full border rounded-lg px-3 py-1.5 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Rol</label>
+            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="w-full border rounded-lg px-3 py-1.5 text-sm">
+              <option value="profesor">Profesor</option>
+              <option value="coordinador">Coordinación</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          {form.role === "profesor" && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Asignaturas que dicta</label>
+              <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto border rounded-lg p-2">
+                {schoolData.subjects.map((s) => (
+                  <label key={s.id} className="flex items-center gap-1.5 text-xs">
+                    <input type="checkbox" checked={form.subjectIds.includes(s.id)} onChange={() => toggleSubject(s.id)} />
+                    {s.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <BtnGold onClick={save} className="flex-1 justify-center"><Save size={15} className="mr-1.5" />{editingId ? "Guardar cambios" : "Crear usuario"}</BtnGold>
+            {editingId && (
+              <button onClick={() => { setForm(emptyTeacher()); setEditingId(null); }} className="px-3 py-1.5 rounded-lg border text-sm">Cancelar</button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Usuarios">
+        <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {schoolData.users.map((u) => (
+            <li key={u.id} className="bg-gray-50 rounded-lg px-3 py-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="font-semibold">{u.name}</div>
+                  <div className="text-xs text-gray-500">{roleLabel(u.role)} · usuario: {u.username}</div>
+                  {u.role === "profesor" && (
+                    <div className="text-xs text-gray-400 mt-1">
+                      {(u.subjectIds || []).map((sid) => schoolData.subjects.find((s) => s.id === sid)?.name).filter(Boolean).join(", ") || "Sin asignaturas"}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1">
+                  <button onClick={() => edit(u)} className="text-gray-400 hover:text-blue-600"><Pencil size={15} /></button>
+                  <button onClick={() => remove(u.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+/* --------- Estudiantes --------- */
+function Estudiantes({ schoolData, persistSchool }) {
+  const [form, setForm] = useState({ name: "", doc: "", grado: "" });
+  const [editingId, setEditingId] = useState(null);
+
+  function save() {
+    if (!form.name.trim()) return alert("El nombre es obligatorio.");
+    if (editingId) {
+      persistSchool({ ...schoolData, students: schoolData.students.map((s) => (s.id === editingId ? { ...form, id: editingId } : s)) });
+    } else {
+      persistSchool({ ...schoolData, students: [...schoolData.students, { ...form, id: uid("e") }] });
+    }
+    setForm({ name: "", doc: "", grado: "" });
+    setEditingId(null);
+  }
+  function edit(s) {
+    setForm({ name: s.name, doc: s.doc, grado: s.grado });
+    setEditingId(s.id);
+  }
+  function remove(id) {
+    if (!confirm("¿Eliminar este estudiante?")) return;
+    persistSchool({ ...schoolData, students: schoolData.students.filter((s) => s.id !== id) });
+  }
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <Card title={editingId ? "Editar estudiante" : "Nuevo estudiante"}>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Nombre completo</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border rounded-lg px-3 py-1.5 text-sm" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Documento</label>
+              <input value={form.doc} onChange={(e) => setForm({ ...form, doc: e.target.value })} className="w-full border rounded-lg px-3 py-1.5 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Grado / Ciclo</label>
+              <input value={form.grado} onChange={(e) => setForm({ ...form, grado: e.target.value })} className="w-full border rounded-lg px-3 py-1.5 text-sm" placeholder="Ej. Ciclo III" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <BtnGold onClick={save} className="flex-1 justify-center"><Save size={15} className="mr-1.5" />{editingId ? "Guardar cambios" : "Agregar estudiante"}</BtnGold>
+            {editingId && <button onClick={() => { setForm({ name: "", doc: "", grado: "" }); setEditingId(null); }} className="px-3 py-1.5 rounded-lg border text-sm">Cancelar</button>}
+          </div>
+        </div>
+      </Card>
+
+      <Card title={`Estudiantes (${schoolData.students.length})`}>
+        <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
+          {schoolData.students.map((s) => (
+            <li key={s.id} className="flex justify-between items-center bg-gray-50 rounded-lg px-3 py-2">
+              <div>
+                <div className="font-medium">{s.name}</div>
+                <div className="text-xs text-gray-500">Doc: {s.doc || "—"} · {s.grado || "Sin grado"}</div>
+              </div>
+              <div className="flex gap-1">
+                <button onClick={() => edit(s)} className="text-gray-400 hover:text-blue-600"><Pencil size={15} /></button>
+                <button onClick={() => remove(s.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={15} /></button>
+              </div>
+            </li>
+          ))}
+          {schoolData.students.length === 0 && <li className="text-xs text-gray-400">Aún no hay estudiantes registrados.</li>}
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+/* ================================================================
+   PROFESOR AREA
+================================================================ */
+function ProfesorArea({ session, schoolData, gradesData, persistGrades }) {
+  const mySubjects = schoolData.subjects.filter((s) => (session.subjectIds || []).includes(s.id));
+  const [subjectId, setSubjectId] = useState(mySubjects[0]?.id || "");
+  const [localGrades, setLocalGrades] = useState(gradesData.grades);
+
+  useEffect(() => setLocalGrades(gradesData.grades), [gradesData]);
+
+  if (mySubjects.length === 0) {
+    return <EmptyState text="Aún no tienes asignaturas asignadas. Pide al administrador que te las asigne." />;
+  }
+
+  function keyFor(studentId, period) {
+    return `${studentId}|${subjectId}|${period}`;
+  }
+
+  function handleChange(studentId, period, value) {
+    const v = value === "" ? "" : Math.max(0, Math.min(5, Number(value)));
+    setLocalGrades((g) => ({ ...g, [keyFor(studentId, period)]: v }));
+  }
+
+  async function handleBlurSave() {
+    await persistGrades({ ...gradesData, grades: localGrades });
+  }
+
+  const subject = schoolData.subjects.find((s) => s.id === subjectId);
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <span className="text-xs font-semibold text-gray-500">Asignatura:</span>
+        {mySubjects.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => setSubjectId(s.id)}
+            className="px-3 py-1.5 rounded-full text-xs font-semibold border transition"
+            style={subjectId === s.id ? { background: BRAND.blue, color: "white", borderColor: BRAND.blue } : { color: BRAND.blue, borderColor: "#d1d5db" }}
+          >
+            {s.name}
+          </button>
+        ))}
+      </div>
+
+      <Card title={`Notas — ${subject?.name || ""}`}>
+        {schoolData.students.length === 0 ? (
+          <EmptyState text="No hay estudiantes registrados todavía." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: BRAND.blueSoft }}>
+                  <th className="text-left px-3 py-2 rounded-l-lg">Estudiante</th>
+                  {PERIODOS.map((p) => <th key={p} className="px-2 py-2 text-center w-20">Periodo {p}</th>)}
+                  <th className="px-2 py-2 text-center rounded-r-lg w-24">Definitiva</th>
+                </tr>
+              </thead>
+              <tbody>
+                {schoolData.students.map((st) => {
+                  const vals = PERIODOS.map((p) => localGrades[keyFor(st.id, p)]);
+                  const def = promedioPeriodos(vals);
+                  return (
+                    <tr key={st.id} className="border-b border-gray-100">
+                      <td className="px-3 py-2 font-medium">{st.name}</td>
+                      {PERIODOS.map((p) => (
+                        <td key={p} className="px-2 py-1.5 text-center">
+                          <input
+                            type="number" min="0" max="5" step="0.1"
+                            value={localGrades[keyFor(st.id, p)] ?? ""}
+                            onChange={(e) => handleChange(st.id, p, e.target.value)}
+                            onBlur={handleBlurSave}
+                            className="w-16 text-center border rounded-md px-1 py-1 focus:outline-none focus:ring-2"
+                          />
+                        </td>
+                      ))}
+                      <td className="px-2 py-1.5 text-center font-bold" style={{ color: BRAND.blue }}>
+                        {def !== null ? def.toFixed(1) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="text-xs text-gray-400 mt-3">Los cambios se guardan automáticamente al salir de cada casilla.</p>
+      </Card>
+    </div>
+  );
+}
+
+/* ================================================================
+   COORDINADOR AREA
+================================================================ */
+function CoordinadorArea({ schoolData, gradesData, persistGrades }) {
+  const [tab, setTab] = useState("convivencia");
+  const tabs = [
+    { key: "convivencia", label: "Convivencia", icon: <ClipboardList size={16} /> },
+    { key: "observaciones", label: "Observaciones", icon: <Pencil size={16} /> },
+    { key: "boletines", label: "Boletines", icon: <GraduationCap size={16} /> },
+  ];
+
+  return (
+    <div>
+      <Tabs tabs={tabs} active={tab} onChange={setTab} />
+      {tab === "convivencia" && <ConvivenciaTable schoolData={schoolData} gradesData={gradesData} persistGrades={persistGrades} />}
+      {tab === "observaciones" && <ObservacionesEditor schoolData={schoolData} gradesData={gradesData} persistGrades={persistGrades} />}
+      {tab === "boletines" && <BoletinesViewer schoolData={schoolData} gradesData={gradesData} />}
+    </div>
+  );
+}
+
+function ConvivenciaTable({ schoolData, gradesData, persistGrades }) {
+  const [local, setLocal] = useState(gradesData.convivencia);
+  useEffect(() => setLocal(gradesData.convivencia), [gradesData]);
+
+  function keyFor(studentId, period) { return `${studentId}|${period}`; }
+
+  function handleChange(studentId, period, value) {
+    const v = value === "" ? "" : Math.max(0, Math.min(5, Number(value)));
+    setLocal((c) => ({ ...c, [keyFor(studentId, period)]: v }));
+  }
+  async function handleBlurSave() {
+    await persistGrades({ ...gradesData, convivencia: local });
+  }
+
+  if (schoolData.students.length === 0) return <EmptyState text="No hay estudiantes registrados todavía." />;
+
+  return (
+    <Card title="Nota de Convivencia por estudiante">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: BRAND.honey }}>
+              <th className="text-left px-3 py-2 rounded-l-lg">Estudiante</th>
+              {PERIODOS.map((p) => <th key={p} className="px-2 py-2 text-center w-20">Periodo {p}</th>)}
+              <th className="px-2 py-2 text-center rounded-r-lg w-24">Definitiva</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schoolData.students.map((st) => {
+              const vals = PERIODOS.map((p) => local[keyFor(st.id, p)]);
+              const def = promedioPeriodos(vals);
+              return (
+                <tr key={st.id} className="border-b border-gray-100">
+                  <td className="px-3 py-2 font-medium">{st.name}</td>
+                  {PERIODOS.map((p) => (
+                    <td key={p} className="px-2 py-1.5 text-center">
+                      <input
+                        type="number" min="0" max="5" step="0.1"
+                        value={local[keyFor(st.id, p)] ?? ""}
+                        onChange={(e) => handleChange(st.id, p, e.target.value)}
+                        onBlur={handleBlurSave}
+                        className="w-16 text-center border rounded-md px-1 py-1 focus:outline-none focus:ring-2"
+                      />
+                    </td>
+                  ))}
+                  <td className="px-2 py-1.5 text-center font-bold" style={{ color: BRAND.goldDark }}>{def !== null ? def.toFixed(1) : "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+}
+
+function ObservacionesEditor({ schoolData, gradesData, persistGrades }) {
+  const [studentId, setStudentId] = useState(schoolData.students[0]?.id || "");
+  const [texto, setTexto] = useState(gradesData.observaciones[studentId] || "");
+
+  useEffect(() => setTexto(gradesData.observaciones[studentId] || ""), [studentId, gradesData]);
+
+  async function save() {
+    await persistGrades({ ...gradesData, observaciones: { ...gradesData.observaciones, [studentId]: texto } });
+  }
+
+  if (schoolData.students.length === 0) return <EmptyState text="No hay estudiantes registrados todavía." />;
+
+  return (
+    <Card title="Observaciones del boletín">
+      <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="w-full border rounded-lg px-3 py-1.5 text-sm mb-3">
+        {schoolData.students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+      </select>
+      <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={5} className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Escribe aquí las observaciones del periodo…" />
+      <BtnGold onClick={save} className="mt-3"><Save size={15} className="mr-1.5" />Guardar observación</BtnGold>
+    </Card>
+  );
+}
+
+/* ================================================================
+   BOLETÍN
+================================================================ */
+function BoletinesViewer({ schoolData, gradesData, editableObservaciones, onSaveObservaciones }) {
+  const grados = useMemo(() => {
+    const set = new Set(schoolData.students.map((s) => s.grado || "Sin grado"));
+    return Array.from(set).sort();
+  }, [schoolData.students]);
+
+  const [grado, setGrado] = useState(grados[0] || "");
+  useEffect(() => { if (!grados.includes(grado)) setGrado(grados[0] || ""); }, [grados]);
+
+  const studentsInGrado = schoolData.students.filter((s) => (s.grado || "Sin grado") === grado);
+
+  const [studentId, setStudentId] = useState(studentsInGrado[0]?.id || "");
+  useEffect(() => {
+    if (!studentsInGrado.find((s) => s.id === studentId)) {
+      setStudentId(studentsInGrado[0]?.id || "");
+    }
+  }, [grado, schoolData.students]);
+
+  const student = schoolData.students.find((s) => s.id === studentId);
+
+  if (schoolData.students.length === 0) return <EmptyState text="No hay estudiantes registrados todavía." />;
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-3 mb-4 print:hidden">
+        <select value={grado} onChange={(e) => setGrado(e.target.value)} className="border rounded-lg px-3 py-1.5 text-sm">
+          {grados.map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
+        <select value={studentId} onChange={(e) => setStudentId(e.target.value)} className="border rounded-lg px-3 py-1.5 text-sm">
+          {studentsInGrado.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-semibold" style={{ color: BRAND.blue, borderColor: BRAND.blue }}>
+          <Printer size={15} /> Imprimir
+        </button>
+      </div>
+      {student && (
+        <Boletin
+          schoolData={schoolData}
+          gradesData={gradesData}
+          student={student}
+          editableObservaciones={editableObservaciones}
+          onSaveObservaciones={onSaveObservaciones}
+        />
+      )}
+    </div>
+  );
+}
+
+function Boletin({ schoolData, gradesData, student, editableObservaciones, onSaveObservaciones }) {
+  const [obsDraft, setObsDraft] = useState(gradesData.observaciones[student.id] || "");
+  useEffect(() => setObsDraft(gradesData.observaciones[student.id] || ""), [student.id, gradesData]);
+
+  const grades = gradesData.grades;
+  const convivencia = gradesData.convivencia;
+
+  // Definitiva por asignatura + promedio general del estudiante (para promedio y puesto)
+  const subjectRows = schoolData.subjects.map((subj) => {
+    const vals = PERIODOS.map((p) => grades[`${student.id}|${subj.id}|${p}`]);
+    const def = promedioPeriodos(vals);
+    return { subj, vals, def };
+  });
+
+  const overallVals = subjectRows.map((r) => r.def).filter((v) => v !== null);
+  const promedioGeneral = overallVals.length ? overallVals.reduce((a, b) => a + b, 0) / overallVals.length : null;
+
+  // Puesto académico: comparar contra estudiantes del mismo grado
+  const sameGrade = schoolData.students.filter((s) => s.grado === student.grado);
+  const rankings = sameGrade.map((s) => {
+    const vals = schoolData.subjects.map((subj) => promedioPeriodos(PERIODOS.map((p) => grades[`${s.id}|${subj.id}|${p}`]))).filter((v) => v !== null);
+    const prom = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    return { id: s.id, prom };
+  }).filter((r) => r.prom !== null).sort((a, b) => b.prom - a.prom);
+  const puesto = rankings.findIndex((r) => r.id === student.id) + 1;
+
+  const convVals = PERIODOS.map((p) => convivencia[`${student.id}|${p}`]);
+  const convDef = promedioPeriodos(convVals);
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 print:shadow-none print:border-0">
+      {/* Encabezado */}
+      <div className="flex items-center gap-4 border-b-2 pb-4 mb-4" style={{ borderColor: BRAND.gold }}>
+        <Logo size={64} />
+        <div className="text-center flex-1">
+          <h2 style={{ color: BRAND.blue }} className="text-lg font-extrabold uppercase">{schoolData.schoolName}</h2>
+          <p style={{ color: BRAND.goldDark }} className="text-xs font-semibold uppercase tracking-wide">Sabiduría, gracia y carácter</p>
+        </div>
+      </div>
+
+      <h3 className="text-center font-bold text-gray-700 mb-4 uppercase tracking-wide text-sm">Informe Valorativo — Todos los Periodos</h3>
+
+      <div className="grid grid-cols-3 gap-3 text-xs mb-5">
+        <InfoBox label="Estudiante" value={student.name} />
+        <InfoBox label="Documento" value={student.doc || "—"} />
+        <InfoBox label="Grado / Ciclo" value={student.grado || "—"} />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr style={{ background: BRAND.blueSoft, color: BRAND.blue }}>
+              <th className="text-left px-2 py-2 border">Área — Asignatura</th>
+              {PERIODOS.map((p) => <th key={p} className="px-2 py-2 border w-14">{p}</th>)}
+              <th className="px-2 py-2 border w-16">Definitiva</th>
+              <th className="px-2 py-2 border w-24">Nivel</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schoolData.areas.map((area) => {
+              const rows = subjectRows.filter((r) => r.subj.areaId === area.id);
+              if (rows.length === 0) return null;
+              return (
+                <Fragment key={area.id}>
+                  <tr style={{ background: BRAND.gold }}>
+                    <td colSpan={7} className="px-2 py-1.5 font-bold uppercase" style={{ color: BRAND.blueDark }}>{area.name}</td>
+                  </tr>
+                  {rows.map(({ subj, vals, def }) => {
+                    const nivel = def !== null ? nivelDesempeño(def) : "";
+                    return (
+                      <tr key={subj.id} className="border-b border-gray-100">
+                        <td className="px-2 py-1.5 border font-medium">{subj.name}</td>
+                        {vals.map((v, i) => <td key={i} className="px-2 py-1.5 border text-center">{v !== undefined && v !== "" ? v : "—"}</td>)}
+                        <td className="px-2 py-1.5 border text-center font-bold" style={{ color: BRAND.blue }}>{def !== null ? def.toFixed(1) : "—"}</td>
+                        <td className="px-2 py-1.5 border text-center font-semibold" style={{ color: nivelColor(nivel) }}>{nivel}</td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              );
+            })}
+            <tr style={{ background: BRAND.honey }}>
+              <td className="px-2 py-1.5 border font-bold">CONVIVENCIA</td>
+              {convVals.map((v, i) => <td key={i} className="px-2 py-1.5 border text-center">{v !== undefined && v !== "" ? v : "—"}</td>)}
+              <td className="px-2 py-1.5 border text-center font-bold" style={{ color: BRAND.goldDark }}>{convDef !== null ? convDef.toFixed(1) : "—"}</td>
+              <td className="px-2 py-1.5 border text-center font-semibold" style={{ color: nivelColor(nivelDesempeño(convDef)) }}>{convDef !== null ? nivelDesempeño(convDef) : ""}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mt-4">
+        <InfoBox label="Promedio general" value={promedioGeneral !== null ? promedioGeneral.toFixed(2) : "—"} />
+        <InfoBox label="Puesto académico" value={puesto > 0 ? `${puesto} de ${rankings.length}` : "—"} />
+      </div>
+
+      <p className="text-xs text-gray-500 mt-4">
+        <strong>Escala de valoración:</strong> 1.0 – 2.9 Bajo · 3.0 – 3.9 Básico · 4.0 – 4.5 Alto · 4.6 – 5.0 Superior
+      </p>
+
+      <div className="mt-4">
+        <div className="text-xs font-bold text-gray-600 mb-1">Observaciones</div>
+        {editableObservaciones ? (
+          <div>
+            <textarea value={obsDraft} onChange={(e) => setObsDraft(e.target.value)} rows={3} className="w-full border rounded-lg px-3 py-2 text-xs print:hidden" />
+            <button onClick={() => onSaveObservaciones(student.id, obsDraft)} className="mt-2 text-xs font-semibold px-3 py-1 rounded-lg border print:hidden" style={{ color: BRAND.blue, borderColor: BRAND.blue }}>
+              Guardar observación
+            </button>
+            <p className="hidden print:block text-xs border rounded-lg px-3 py-2" style={{ minHeight: "3rem" }}>{obsDraft}</p>
+          </div>
+        ) : (
+          <p className="text-xs border rounded-lg px-3 py-2" style={{ minHeight: "3rem" }}>{gradesData.observaciones[student.id] || "—"}</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 mt-8 pt-4 border-t text-center text-xs">
+        <div>
+          <div className="border-t border-gray-400 pt-1 mx-6">Docente</div>
+        </div>
+        <div>
+          <div className="border-t border-gray-400 pt-1 mx-6">Coordinación</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InfoBox({ label, value }) {
+  return (
+    <div className="bg-gray-50 rounded-lg px-3 py-2">
+      <div className="text-xs font-bold text-gray-400 uppercase">{label}</div>
+      <div className="font-semibold text-gray-700">{value}</div>
+    </div>
+  );
+}
+
+/* ================================================================
+   UI helpers
+================================================================ */
+function Card({ title, children }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+      <h3 style={{ color: BRAND.blue }} className="font-bold mb-3">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function BtnGold({ children, onClick, className = "" }) {
+  return (
+    <button onClick={onClick} style={{ background: BRAND.gold, color: BRAND.blueDark }} className={`flex items-center px-3 py-1.5 rounded-lg font-semibold text-sm hover:brightness-95 transition ${className}`}>
+      {children}
+    </button>
+  );
+}
+
+function EmptyState({ text }) {
+  return <div className="text-center text-gray-400 text-sm py-10 border-2 border-dashed rounded-xl">{text}</div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
